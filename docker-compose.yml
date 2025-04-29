@@ -1,0 +1,141 @@
+services:
+
+  techo-web-mysql:
+    image: mysql:8.0
+    container_name: techo-web-mysql
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: newUsers
+      MYSQL_PASSWORD: password
+    expose:
+      - '3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  techo-web-discovery-service:
+    build: ./discovery-service
+    container_name: techo-web-discovery-service
+    ports:
+      - '8761:8761'
+    expose:
+      - '8761'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      retries: 4
+  techo-web-config-service:
+    build: ./config-service
+    container_name: techo-web-config-service
+    ports:
+      - '9999:9999'
+    expose:
+      - '9999'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+    depends_on:
+      techo-web-discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9999/actuator/health" ]
+      interval: 10s
+      retries: 4
+  techo-web-user-service:
+    build: ./user-service
+    container_name: techo-web-user-service
+    ports:
+      - '8082:8082'
+    expose:
+      - '8082'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+      - CONFIG_SERVICE_URL=http://techo-web-config-service:9999
+      - SPRING_DATASOURCE_URL=jdbc:mysql://techo-web-mysql:3306/user_db
+      - SPRING_DATASOURCE_USERNAME=newUsers
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      techo-web-config-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 10s
+      retries: 4
+  techo-web-etudiant-service:
+    build: ./etudiant-service
+    container_name: techo-web-etudiant-service
+    ports:
+      - '8081:8081'
+    expose:
+      - '8081'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+      - CONFIG_SERVICE_URL=http://techo-web-config-service:9999
+      - SPRING_DATASOURCE_URL=jdbc:mysql://techo-web-mysql:3306/etudiant_db
+      - SPRING_DATASOURCE_USERNAME=newUsers
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      techo-web-config-service:
+        condition: service_healthy
+  techo-web-formateur-service:
+    build: ./formateur-service
+    container_name: techo-web-formateur-service
+    ports:
+      - '8083:8083'
+    expose:
+      - '8083'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+      - CONFIG_SERVICE_URL=http://techo-web-config-service:9999
+      - SPRING_DATASOURCE_URL=jdbc:mysql://techo-web-mysql:3306/formateur_db
+      - SPRING_DATASOURCE_USERNAME=newUsers
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      techo-web-config-service:
+        condition: service_healthy
+  techo-web-formation-service:
+    build: ./formation-service
+    container_name: techo-web-formation-service
+    ports:
+      - '8085:8085'
+    expose:
+      - '8085'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+      - CONFIG_SERVICE_URL=http://techo-web-config-service:9999
+      - SPRING_DATASOURCE_URL=jdbc:mysql://techo-web-mysql:3306/formation_data_db
+      - SPRING_DATASOURCE_USERNAME=newUsers
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      techo-web-config-service:
+        condition: service_healthy
+  techo-web-gateway-service:
+    build: ./gateway-service
+    container_name: techo-web-gateway-service
+    ports:
+      - '8080:8080'
+    expose:
+      - '8080'
+    environment:
+      - DISCOVERY_SERVICE_URL=http://techo-web-discovery-service:8761/eureka
+      - CONFIG_SERVICE_URL=http://techo-web-config-service:9999
+
+    depends_on:
+      techo-web-config-service:
+        condition: service_healthy
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+    - 8086:8080
+volumes:
+    mysql-data:
+
+
+
+
